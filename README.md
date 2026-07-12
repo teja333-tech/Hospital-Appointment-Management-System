@@ -1,218 +1,24 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
-#define MAX 50
+A console-based hospital appointment management system developed in C demonstrating the practical application of data structures for appointment scheduling and management.
 
-// Appointment structure
-struct Appointment {
-int token;
-char patient[50];
-char contact[20];
-char department[30];
-char doctor[30];
-char time[20];
-struct Appointment* next;
-};
 
-// Doctor structure
-struct Doctor {
-char name[50];
-char department[30];
-};
+       
+# Hospital Appointment Management System
 
-// Department structure
-struct Department {
-char name[50];
-};
+## Features
+- Book appointments
+- Cancel appointments
+- Undo last cancellation
+- Time-slot conflict detection
+- Token generation
 
-// Globals
-struct Appointment* head = NULL;
-struct Appointment* stack[100];
-int top = -1;
-int tokenCounter = 1;
+## Data Structures Used
+- Linked List
+- Stack
+- Arrays
+- Structures
 
-struct Doctor doctors[MAX];
-int doctorCount = 0;
-
-struct Department departments[MAX];
-int deptCount = 0;
-
-// Push and Pop for undo
-void push(struct Appointment* appt) { stack[++top] = appt; }
-struct Appointment* pop() { return (top == -1) ? NULL : stack[top--]; }
-
-// Preload departments and doctors
-void preloadData() {
-// Departments
-strcpy(departments[0].name, "Cardiology");
-strcpy(departments[1].name, "Neurology");
-strcpy(departments[2].name, "Orthopedics");
-strcpy(departments[3].name, "Pediatrics");
-strcpy(departments[4].name, "Dermatology");
-deptCount = 5;
-
-// Doctors  
-strcpy(doctors[0].name, "Dr. Smith"); strcpy(doctors[0].department, "Cardiology");  
-strcpy(doctors[1].name, "Dr. Johnson"); strcpy(doctors[1].department, "Cardiology");  
-strcpy(doctors[2].name, "Dr. Lee"); strcpy(doctors[2].department, "Neurology");  
-strcpy(doctors[3].name, "Dr. Brown"); strcpy(doctors[3].department, "Orthopedics");  
-strcpy(doctors[4].name, "Dr. Davis"); strcpy(doctors[4].department, "Pediatrics");  
-strcpy(doctors[5].name, "Dr. Wilson"); strcpy(doctors[5].department, "Dermatology");  
-doctorCount = 6;
-
-}
-
-// Book Appointment
-void bookAppointment() {
-if(doctorCount == 0){
-printf("No doctors available!\n\n");
-return;
-}
-struct Appointment* newAppt = (struct Appointment*)malloc(sizeof(struct Appointment));
-newAppt->token = tokenCounter++;
-printf("Enter Patient Name: ");
-scanf(" %[^\n]s", newAppt->patient);
-printf("Enter Contact: ");
-scanf(" %[^\n]s", newAppt->contact);
-
-printf("Choose Department:\n");  
-for(int i=0;i<deptCount;i++){  
-    printf("%d. %s\n", i+1, departments[i].name);  
-}  
-int d;  
-scanf("%d", &d);  
-strcpy(newAppt->department, departments[d-1].name);  
-
-printf("Choose Doctor:\n");  
-int count = 1;  
-int docIndex[MAX];  
-for(int i=0;i<doctorCount;i++){  
-    if(strcmp(doctors[i].department, newAppt->department)==0){  
-        printf("%d. %s\n", count, doctors[i].name);  
-        docIndex[count-1]=i;  
-        count++;  
-    }  
-}  
-int docChoice;  
-scanf("%d", &docChoice);  
-strcpy(newAppt->doctor, doctors[docIndex[docChoice-1]].name);  
-
-// Time input with conflict check  
-int valid = 0;  
-while(!valid){  
-    printf("Enter Time (HH:MM): ");  
-    scanf(" %[^\n]s", newAppt->time);  
-
-    // Check for conflicts  
-    struct Appointment* temp = head;  
-    valid = 1; // assume valid until conflict found  
-    while(temp != NULL){  
-        if(strcmp(temp->doctor, newAppt->doctor)==0 && strcmp(temp->time, newAppt->time)==0){  
-            printf(" Time slot already booked with %s at %s. Please choose another time.\n",   
-                    newAppt->doctor, newAppt->time);  
-            valid = 0;  
-            break;  
-        }  
-        temp = temp->next;  
-    }  
-}  
-
-newAppt->next = NULL;  
-
-// Add to linked list  
-if(head == NULL) head = newAppt;  
-else {  
-    struct Appointment* temp = head;  
-    while(temp->next != NULL) temp = temp->next;  
-    temp->next = newAppt;  
-}  
-
-printf("Appointment booked successfully! Token No: %d\n\n", newAppt->token);
-
-}
-// View Appointments
-void viewAppointments() {
-if(head==NULL){ printf("No appointments found.\n\n"); return; }
-struct Appointment* temp = head;
-printf("\n--- All Appointments ---\n");
-while(temp != NULL){
-printf("Token: %d | Name: %s | Contact: %s | Department: %s | Doctor: %s | Time: %s\n",
-temp->token, temp->patient, temp->contact, temp->department, temp->doctor, temp->time);
-temp=temp->next;
-}
-printf("\n");
-}
-
-// Cancel Appointment
-void cancelAppointment() {
-if(head==NULL){ printf("No appointments to cancel.\n\n"); return; }
-int token;
-printf("Enter Token to cancel: ");
-scanf("%d", &token);
-struct Appointment *temp=head,*prev=NULL;
-while(temp!=NULL && temp->token!=token){ prev=temp; temp=temp->next; }
-if(temp==NULL){ printf("Appointment not found!\n\n"); return; }
-if(prev==NULL) head=temp->next;
-else prev->next=temp->next;
-temp->next=NULL;
-push(temp);
-printf("Appointment canceled successfully!\n\n");
-}
-
-// Undo last cancellation with conflict check
-void undoCancellation() {
-struct Appointment* last = pop();
-if(last == NULL){
-printf("No canceled appointments.\n\n");
-return;
-}
-
-// Check if same doctor & same time already exists  
-struct Appointment* temp = head;  
-while(temp != NULL){  
-    if(strcmp(temp->doctor, last->doctor) == 0 && strcmp(temp->time, last->time) == 0){  
-        printf("Cannot restore appointment! Doctor %s already has a booking at %s.\n",  
-               last->doctor, last->time);  
-        free(last); // discard since priority is for already booked appointment  
-        return;  
-    }  
-    temp = temp->next;  
-}  
-
-// If no conflict, restore at end of linked list  
-if(head == NULL){  
-    head = last;  
-} else {  
-    temp = head;  
-    while(temp->next != NULL) temp = temp->next;  
-    temp->next = last;  
-}  
-
-printf("Last canceled appointment restored! Token: %d\n\n", last->token);
-
-}
-// Main Menu
-int main() {
-preloadData(); // Preload departments & doctors
-int choice;
-while(1){
-printf("=== Hospital System ===\n");
-printf("1. Book Appointment\n");
-printf("2. View Appointments\n");
-printf("3. Cancel Appointment\n");
-printf("4. Undo Last Cancel\n");
-printf("5. Exit\n");
-printf("Enter choice: ");
-scanf("%d",&choice);
-switch(choice){
-case 1: bookAppointment(); break;
-case 2: viewAppointments(); break;
-case 3: cancelAppointment(); break;
-case 4: undoCancellation(); break;
-case 5: printf("Exiting... Goodbye!\n"); exit(0);
-default: printf("Invalid choice!\n");
-}
-}
-}
+## How to Run
+gcc hospital.c -o hospital
+./hospital
 
